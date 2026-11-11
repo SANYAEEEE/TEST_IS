@@ -23,7 +23,7 @@ async def index(request: Request):
 
 @app.post("/start")
 async def start_test(request: Request, username: str = Form(...), topics: list[str] = Form(default=[]), marathon: str = Form(None)):
-    # Вот эта строчка была потеряна, она загружает вопросы
+    print(f"[ЛОГ] Пользователь '{username}' начал тест. Выбранные темы: {topics}")
     all_questions = database.load_questions()
 
     if "general" in topics or not topics:
@@ -110,13 +110,13 @@ async def profile(request: Request, username: str = ""):
     })
 
 
-
-
 @app.post("/submit", response_class=HTMLResponse)
 async def submit_test(request: Request):
     form_data = await request.form()
     username = form_data.get("username")
     topic = form_data.get("topic")
+
+    print(f"[ЛОГ] Пользователь '{username}' завершил тест по теме '{topic}'")
 
     all_questions = database.load_questions()
     score = 0
@@ -155,7 +155,10 @@ async def submit_test(request: Request):
             for i in range(len(q["options"])):
                 val = form_data.get(f"q_{q_id}_order_{i}")
                 if val:
-                    user_order.append(q["options"][int(val) - 1])
+                    try:
+                        user_order.append(q["options"][int(val) - 1])
+                    except (IndexError, ValueError):
+                        pass  # Если что-то пошло не так, просто пропускаем
             is_correct = user_order == q["correct"]
             earned_points = q["points"] if is_correct else 0
 
@@ -182,8 +185,12 @@ async def submit_test(request: Request):
         "max_score": max_score,
         "details": details
     }
+
     result_id = database.save_result(result_data)
+    print(f"[ЛОГ] Результат сохранен. ID: {result_id}, Баллы: {score}/{max_score}")
+
     return RedirectResponse(url=f"/result/{result_id}", status_code=303)
+
 
 @app.get("/result/{result_id}", response_class=HTMLResponse)
 async def get_result_page(request: Request, result_id: str):

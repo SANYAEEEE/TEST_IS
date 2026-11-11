@@ -22,8 +22,7 @@
                     {% for opt in q.options %}
                     <label class="option-label">
                         <input type="{% if q.type == 'single' %}radio{% else %}checkbox{% endif %}"
-                               name="q_{{ q.id }}" value="{{ opt }}"
-                               {% if q.type == 'single' %}required{% endif %}>
+                               name="q_{{ q.id }}" value="{{ opt }}">
                         {{ opt }}
                     </label>
                     {% endfor %}
