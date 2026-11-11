@@ -215,17 +215,23 @@ async def add_question(
 ):
     all_questions = database.load_questions()
 
+    # ПРОВЕРКА: нет ли уже такого вопроса? (сравниваем текст без учета регистра)
+    for q in all_questions:
+        if q["question"].strip().lower() == question.strip().lower():
+            # Если нашли такой же — возвращаем ошибку
+            return HTMLResponse(
+                f"<h1>Ошибка!</h1><p>Вопрос с таким текстом уже есть в базе (ID {q['id']}).</p><a href='/add_question'>Назад</a>",
+                status_code=400)
+
     # Вычисляем новый ID
     new_id = max([q["id"] for q in all_questions]) + 1 if all_questions else 1
 
-    # Определяем баллы в зависимости от сложности
     points = 1
     if difficulty == "Средний":
         points = 2
     elif difficulty == "Сложный":
         points = 3
 
-    # Создаем новый вопрос
     new_q = {
         "id": new_id,
         "topic": topic,
@@ -238,8 +244,9 @@ async def add_question(
         "explanation": explanation
     }
 
-    # Добавляем и сохраняем
     all_questions.append(new_q)
+
+    # Сохраняем
     with open('data/questions.json', 'w', encoding='utf-8') as f:
         json.dump(all_questions, f, ensure_ascii=False, indent=2)
 
