@@ -8,7 +8,7 @@
 <body>
     <div class="container">
         <div class="card">
-            <h1>📊 История тестов: {{ username }}</h1>
+            <h1> История тестов: {{ username }}</h1>
             <a href="/" class="btn" style="background: #64748b; text-decoration: none; display: inline-block; margin-bottom: 20px;">На главную</a>
 
             {% if results %}
@@ -25,7 +25,7 @@
                         <td style="padding: 10px;">{{ r.topic }}</td>
                         <td style="padding: 10px;"><b>{{ r.score }} / {{ r.max_score }}</b></td>
                         <td style="padding: 10px;">
-                            <a href="/result/{{ r.id }}" style="color: var(--primary-dark);">Посмотреть</a>
+                         <a href="/result/{{ r.id }}" class="btn" style="padding: 6px 12px; font-size: 14px; background: var(--primary-dark);">Посмотреть</a>
                         </td>
                     </tr>
                     {% endfor %}

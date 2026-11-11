@@ -176,14 +176,14 @@ async def submit_test(request: Request):
             "earned": earned_points
         })
 
+    display_topic = "Общий тест" if topic == "general" else topic
     result_data = {
         "username": username,
-        "topic": topic,
+        "topic": display_topic,
         "score": round(score, 2),
         "max_score": max_score,
         "details": details
     }
-
     result_id = database.save_result(result_data)
     return RedirectResponse(url=f"/result/{result_id}", status_code=303)
 
