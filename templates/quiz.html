@@ -31,7 +31,7 @@
                     {% for opt in q.options %}
                     <div style="margin-bottom: 10px; display: flex; align-items: center;">
                         <span style="flex: 1;">{{ opt }}</span>
-                        <select name="q_{{ q.id }}_order_{{ loop.index0 }}" required style="width: 80px;">
+                        <select name="q_{{ q.id }}_order_{{ loop.index0 }}" style="width: 80px;">
                             <option value="">-</option>
                             {% for i in range(1, q.options|length + 1) %}
                             <option value="{{ i }}">{{ i }}</option>
@@ -45,7 +45,7 @@
                     {% for left in q.left %}
                     <div style="margin-bottom: 10px; display: flex; align-items: center;">
                         <span style="flex: 1; font-weight: bold;">{{ left }}</span>
-                        <select name="q_{{ q.id }}_match_{{ left }}" required style="flex: 2; padding: 8px;">
+                        <select name="q_{{ q.id }}_match_{{ left }}" style="flex: 2; padding: 8px;">
                             <option value="">Выберите...</option>
                             {% for right in q.right %}
                             <option value="{{ right }}">{{ right }}</option>
