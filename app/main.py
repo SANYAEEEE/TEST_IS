@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import app.database as database
+import json
 
 app = FastAPI(title="ИБ Тест")
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -193,3 +194,53 @@ async def get_result_page(request: Request, result_id: str):
     if not result:
         return HTMLResponse("Результат не найден", status_code=404)
     return templates.TemplateResponse(request=request, name="result.html", context={"result": result})
+
+
+@app.get("/add_question", response_class=HTMLResponse)
+async def add_question_page(request: Request):
+    return templates.TemplateResponse(request=request, name="add_question.html")
+
+
+@app.post("/add_question")
+async def add_question(
+        topic: str = Form(...),
+        difficulty: str = Form(...),
+        question: str = Form(...),
+        opt1: str = Form(...),
+        opt2: str = Form(...),
+        opt3: str = Form(...),
+        opt4: str = Form(...),
+        correct: str = Form(...),
+        explanation: str = Form(...)
+):
+    all_questions = database.load_questions()
+
+    # Вычисляем новый ID
+    new_id = max([q["id"] for q in all_questions]) + 1 if all_questions else 1
+
+    # Определяем баллы в зависимости от сложности
+    points = 1
+    if difficulty == "Средний":
+        points = 2
+    elif difficulty == "Сложный":
+        points = 3
+
+    # Создаем новый вопрос
+    new_q = {
+        "id": new_id,
+        "topic": topic,
+        "type": "single",
+        "difficulty": difficulty,
+        "points": points,
+        "question": question,
+        "options": [opt1, opt2, opt3, opt4],
+        "correct": [correct],
+        "explanation": explanation
+    }
+
+    # Добавляем и сохраняем
+    all_questions.append(new_q)
+    with open('data/questions.json', 'w', encoding='utf-8') as f:
+        json.dump(all_questions, f, ensure_ascii=False, indent=2)
+
+    return RedirectResponse(url="/add_question", status_code=303)

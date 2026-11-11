@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Добавить вопрос</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>➕ Добавление вопроса</h1>
+            <form action="/add_question" method="post">
+
+                <div class="form-group">
+                    <label>Тема:</label>
+                    <select name="topic" required>
+                        <option value="Нормативная основа ИБ">Нормативная основа ИБ</option>
+                        <option value="Основы ИБ">Основы ИБ</option>
+                        <option value="Сети">Сети</option>
+                        <option value="Операционные системы">Операционные системы</option>
+                        <option value="Управление персоналом">Управление персоналом</option>
+                        <option value="Вредоносное ПО и инциденты">Вредоносное ПО и инциденты</option>
+                        <option value="Сертификация и лицензирование">Сертификация и лицензирование</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Сложность (и баллы):</label>
+                    <select name="difficulty" required>
+                        <option value="Лёгкий">Лёгкий (1 балл)</option>
+                        <option value="Средний">Средний (2 балла)</option>
+                        <option value="Сложный">Сложный (3 балла)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Текст вопроса:</label>
+                    <input type="text" name="question" required placeholder="Какой закон регулирует...">
+                </div>
+
+                <div class="form-group">
+                    <label>Вариант 1:</label>
+                    <input type="text" name="opt1" required>
+                </div>
+                <div class="form-group">
+                    <label>Вариант 2:</label>
+                    <input type="text" name="opt2" required>
+                </div>
+                <div class="form-group">
+                    <label>Вариант 3:</label>
+                    <input type="text" name="opt3" required>
+                </div>
+                <div class="form-group">
+                    <label>Вариант 4:</label>
+                    <input type="text" name="opt4" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Правильный ответ (скопируй точь-в-точь один из вариантов):</label>
+                    <input type="text" name="correct" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Пояснение (почему это правильно):</label>
+                    <input type="text" name="explanation" required>
+                </div>
+
+                <button type="submit" class="btn">Сохранить вопрос</button>
+                <a href="/" class="btn" style="background: #64748b; text-decoration: none; display: inline-block;">На главную</a>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
