@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тест по ИБ</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Подготовка к защите по ИБ</h1>
+
+            <form action="/start" method="post" id="startForm">
+                <div class="form-group">
+                    <label>Ваш ник:</label>
+                    <input type="text" name="username" id="usernameInput" required placeholder="Например, DimaP">
+                </div>
+
+                <div class="form-group">
+                    <label>Режим:</label>
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: var(--bg); padding: 10px; border-radius: 6px;">
+                        <input type="checkbox" name="marathon" value="true" style="width: 20px; height: 20px;">
+                        <span> Экзамен</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>Выберите тему:</label>
+                    <select name="topic" required>
+                        <option value="general"> Общий тест (вопросы из всех тем)</option>
+                        <option value="Нормативная основа ИБ">Нормативная основа ИБ</option>
+                        <option value="Основы ИБ">Основы ИБ</option>
+                        <option value="Сети">Сети</option>
+                        <option value="Операционные системы">Операционные системы</option>
+                        <option value="Управление персоналом">Управление персоналом</option>
+                        <option value="Вредоносное ПО и инциденты">Вредоносное ПО и инциденты</option>
+                        <option value="Сертификация и лицензирование">Сертификация и лицензирование</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 15px; margin-top: 25px;">
+                    <button type="submit" class="btn">Начать тест</button>
+                    <a href="/profile" class="btn" style="background: #64748b;"> Мой профиль</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const savedNick = localStorage.getItem('username');
+        if (savedNick) {
+            document.getElementById('usernameInput').value = savedNick;
+        }
+        document.getElementById('startForm').addEventListener('submit', (e) => {
+            const nick = document.getElementById('usernameInput').value;
+            localStorage.setItem('username', nick);
+        });
+    </script>
+</body>
+</html>

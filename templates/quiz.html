@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Прохождение теста</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="timer">00:00</div>
+    <div class="container">
+        <form action="/submit" method="post" id="quizForm">
+            <input type="hidden" name="username" value="{{ username }}">
+            <input type="hidden" name="topic" value="{{ topic }}">
+
+            {% for q in questions %}
+            <input type="hidden" name="question_ids" value="{{ q.id }}">
+            <div class="card">
+                <h3>Вопрос {{ loop.index }} ({{ q.difficulty }}, {{ q.points }} б.)</h3>
+                <p>{{ q.question }}</p>
+
+                {% if q.type in ["single", "multi", "case"] %}
+                    {% for opt in q.options %}
+                    <label class="option-label">
+                        <input type="{% if q.type == 'single' %}radio{% else %}checkbox{% endif %}"
+                               name="q_{{ q.id }}" value="{{ opt }}"
+                               {% if q.type == 'single' %}required{% endif %}>
+                        {{ opt }}
+                    </label>
+                    {% endfor %}
+
+                {% elif q.type == "ordering" %}
+                    {% for opt in q.options %}
+                    <div style="margin-bottom: 10px; display: flex; align-items: center;">
+                        <span style="flex: 1;">{{ opt }}</span>
+                        <select name="q_{{ q.id }}_order_{{ loop.index0 }}" required style="width: 80px;">
+                            <option value="">-</option>
+                            {% for i in range(1, q.options|length + 1) %}
+                            <option value="{{ i }}">{{ i }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endfor %}
+                    <small style="color: gray;">Укажите правильный порядок цифрами (1 - первый шаг и т.д.)</small>
+
+                {% elif q.type == "matching" %}
+                    {% for left in q.left %}
+                    <div style="margin-bottom: 10px; display: flex; align-items: center;">
+                        <span style="flex: 1; font-weight: bold;">{{ left }}</span>
+                        <select name="q_{{ q.id }}_match_{{ left }}" required style="flex: 2; padding: 8px;">
+                            <option value="">Выберите...</option>
+                            {% for right in q.right %}
+                            <option value="{{ right }}">{{ right }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn" style="width: 100%; margin-bottom: 50px;">Завершить тест</button>
+        </form>
+    </div>
+
+    <script>
+    let seconds = 0;
+    setInterval(() => {
+        seconds++;
+        const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const s = String(seconds % 60).padStart(2, '0');
+        document.getElementById('timer').textContent = `${m}:${s}`;
+    }, 1000);
+</script>
+</body>
+</html>

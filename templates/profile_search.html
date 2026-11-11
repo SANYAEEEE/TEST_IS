@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мой профиль</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Поиск профиля</h1>
+            <form action="/profile" method="get">
+                <div class="form-group">
+                    <label>Введите ваш ник:</label>
+                    <input type="text" name="username" required placeholder="Например, DimaP">
+                </div>
+                <button type="submit" class="btn">Найти</button>
+                <a href="/" class="btn" style="background: #64748b; text-decoration: none; display: inline-block;">На главную</a>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
