@@ -24,18 +24,45 @@
                     </label>
                 </div>
 
-                <div class="form-group">
-                    <label>Выберите тему:</label>
-                    <select name="topic" required>
-                        <option value="general"> Общий тест (вопросы из всех тем)</option>
-                        <option value="Нормативная основа ИБ">Нормативная основа ИБ</option>
-                        <option value="Основы ИБ">Основы ИБ</option>
-                        <option value="Сети">Сети</option>
-                        <option value="Операционные системы">Операционные системы</option>
-                        <option value="Управление персоналом">Управление персоналом</option>
-                        <option value="Вредоносное ПО и инциденты">Вредоносное ПО и инциденты</option>
-                        <option value="Сертификация и лицензирование">Сертификация и лицензирование</option>
-                    </select>
+                                <div class="form-group">
+                    <label>Выберите темы (можно несколько):</label>
+
+                    <!-- Специальный чекбокс для "Общего теста" -->
+                    <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg); border-radius: 6px; margin-bottom: 10px; cursor: pointer;">
+                        <input type="checkbox" name="topics" value="general" id="generalCheckbox" style="width: 20px; height: 20px;">
+                        <span>🎲 Общий тест (все темы сразу)</span>
+                    </label>
+
+                    <div style="display: flex; flex-direction: column; gap: 8px; padding-left: 10px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="topics" value="Нормативная основа ИБ" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>Нормативная основа ИБ</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="topics" value="Основы ИБ" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>Основы ИБ</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="topics" value="Сети" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>Сети</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="topics" value="Операционные системы" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>Операционные системы</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="topics" value="Управление персоналом" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>Управление персоналом</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="topics" value="Вредоносное ПО и инциденты" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>Вредоносное ПО и инциденты</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" name="topics" value="Сертификация и лицензирование" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>Сертификация и лицензирование</span>
+                        </label>
+                    </div>
                 </div>
 
 
@@ -56,6 +83,24 @@
         document.getElementById('startForm').addEventListener('submit', (e) => {
             const nick = document.getElementById('usernameInput').value;
             localStorage.setItem('username', nick);
+        });
+    </script>
+    <script>
+        const generalCheckbox = document.getElementById('generalCheckbox');
+        const topicCheckboxes = document.querySelectorAll('.topic-checkbox');
+
+        generalCheckbox.addEventListener('change', () => {
+            if (generalCheckbox.checked) {
+                topicCheckboxes.forEach(cb => cb.checked = false);
+            }
+        });
+
+        topicCheckboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                if (cb.checked) {
+                    generalCheckbox.checked = false;
+                }
+            });
         });
     </script>
 </body>

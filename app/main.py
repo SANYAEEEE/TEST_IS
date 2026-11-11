@@ -22,36 +22,35 @@ async def index(request: Request):
 
 
 @app.post("/start")
-async def start_test(request: Request, username: str = Form(...), topic: str = Form(...), marathon: str = Form(None)):
+async def start_test(request: Request, username: str = Form(...), topics: list[str] = Form(...), marathon: str = Form(None)):
     all_questions = database.load_questions()
 
-    if topic == "general":
-        target_count = 30
+    # Обрабатываем темы
+    if "general" in topics or not topics:
         pool = all_questions.copy()
+        display_topic = "Общий тест"
+        target_count = 30 # Для общего теста
     else:
-        target_count = 21
-        pool = [q for q in all_questions if q["topic"] == topic]
+        # Берем вопросы только из выбранных тем
+        pool = [q for q in all_questions if q["topic"] in topics]
+        display_topic = ", ".join(topics)
+        target_count = 21 # Для конкретных тем
 
     is_marathon = (marathon == "true")
 
     if is_marathon:
-        # В марафоне берем больше вопросов (например, 40) и не сортируем
         target_count = 40
         random.shuffle(pool)
         selected = pool[:target_count]
     else:
-        # Обычный режим с сортировкой по сложности
+        # Сортировка по сложности
         easy, medium, hard = [], [], []
         for q in pool:
             diff = str(q.get("difficulty", "")).strip().lower()
-            if "лёг" in diff or "лег" in diff:
-                easy.append(q)
-            elif "сред" in diff:
-                medium.append(q)
-            elif "слож" in diff:
-                hard.append(q)
-            else:
-                medium.append(q)
+            if "лёг" in diff or "лег" in diff: easy.append(q)
+            elif "сред" in diff: medium.append(q)
+            elif "слож" in diff: hard.append(q)
+            else: medium.append(q)
 
         random.shuffle(easy)
         random.shuffle(medium)
@@ -94,7 +93,7 @@ async def start_test(request: Request, username: str = Form(...), topic: str = F
 
     return templates.TemplateResponse(request=request, name="quiz.html", context={
         "username": username,
-        "topic": topic,
+        "topic": display_topic,
         "questions": selected,
         "is_marathon": is_marathon
     })
