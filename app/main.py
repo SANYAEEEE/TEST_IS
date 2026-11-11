@@ -22,19 +22,18 @@ async def index(request: Request):
 
 
 @app.post("/start")
-async def start_test(request: Request, username: str = Form(...), topics: list[str] = Form(...), marathon: str = Form(None)):
+async def start_test(request: Request, username: str = Form(...), topics: list[str] = Form(default=[]), marathon: str = Form(None)):
+    # Вот эта строчка была потеряна, она загружает вопросы
     all_questions = database.load_questions()
 
-    # Обрабатываем темы
     if "general" in topics or not topics:
         pool = all_questions.copy()
         display_topic = "Общий тест"
-        target_count = 30 # Для общего теста
+        target_count = 30
     else:
-        # Берем вопросы только из выбранных тем
         pool = [q for q in all_questions if q["topic"] in topics]
         display_topic = ", ".join(topics)
-        target_count = 21 # Для конкретных тем
+        target_count = 21
 
     is_marathon = (marathon == "true")
 
@@ -43,7 +42,6 @@ async def start_test(request: Request, username: str = Form(...), topics: list[s
         random.shuffle(pool)
         selected = pool[:target_count]
     else:
-        # Сортировка по сложности
         easy, medium, hard = [], [], []
         for q in pool:
             diff = str(q.get("difficulty", "")).strip().lower()
