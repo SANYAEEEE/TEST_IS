@@ -1,5 +1,6 @@
 import random
-from fastapi import FastAPI, Request, Form, Depends, status
+import json
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -31,11 +32,14 @@ def get_current_user(request: Request):
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     user = get_current_user(request)
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "user": user,
-        "topics": TOPICS
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "user": user,
+            "topics": TOPICS
+        }
+    )
 
 # ========== Регистрация ==========
 
@@ -44,32 +48,45 @@ async def register_page(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("register.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request,
+        name="register.html",
+        context={}
+    )
 
 @app.post("/register")
-async def register(request: Request, username: str = Form(...), password: str = Form(...), password2: str = Form(...)):
+async def register(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    password2: str = Form(...)
+):
     if len(username.strip()) < 3:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": "Ник должен быть не короче 3 символов"
-        })
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"error": "Ник должен быть не короче 3 символов"}
+        )
     if len(password) < 4:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": "Пароль должен быть не короче 4 символов"
-        })
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"error": "Пароль должен быть не короче 4 символов"}
+        )
     if password != password2:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": "Пароли не совпадают"
-        })
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"error": "Пароли не совпадают"}
+        )
 
     user_id = database.create_user(username, password)
     if not user_id:
-        return templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": "Такой ник уже занят"
-        })
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"error": "Такой ник уже занят"}
+        )
 
     request.session["user_id"] = user_id
     return RedirectResponse("/", status_code=303)
@@ -81,16 +98,25 @@ async def login_page(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse("/", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={}
+    )
 
 @app.post("/login")
-async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...)
+):
     user = database.verify_user(username, password)
     if not user:
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "error": "Неверный ник или пароль"
-        })
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "Неверный ник или пароль"}
+        )
 
     request.session["user_id"] = user["id"]
     return RedirectResponse("/", status_code=303)
@@ -114,9 +140,6 @@ async def start_test(
     if not user:
         return RedirectResponse("/login", status_code=303)
 
-    # Здесь пока оставляем старую логику загрузки вопросов из JSON
-    # (позже перенесём и вопросы в БД)
-    import json
     with open("data/questions.json", "r", encoding="utf-8") as f:
         all_questions = json.load(f)
 
@@ -125,7 +148,7 @@ async def start_test(
         display_topic = "Общий тест"
         target_count = 30
     else:
-        pool = [q for q in all_questions if q["topic"] in topics]
+        pool = [q for q in all_questions if q.get("topic") in topics]
         display_topic = ", ".join(topics)
         target_count = 21
 
@@ -134,20 +157,23 @@ async def start_test(
         target_count = 40
 
     random.shuffle(pool)
-    selected = pool[:target_count]
+    selected = pool[:min(target_count, len(pool))]
 
     for q in selected:
         if q.get("type") in ["single", "multi", "case"] and "options" in q:
             random.shuffle(q["options"])
 
-    return templates.TemplateResponse("quiz.html", {
-        "request": request,
-        "user": user,
-        "username": user["username"],
-        "topic": display_topic,
-        "questions": selected,
-        "is_marathon": is_marathon
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="quiz.html",
+        context={
+            "user": user,
+            "username": user["username"],
+            "topic": display_topic,
+            "questions": selected,
+            "is_marathon": is_marathon
+        }
+    )
 
 # ========== Отправка теста ==========
 
@@ -160,13 +186,12 @@ async def submit_test(request: Request):
     form_data = await request.form()
     topic = form_data.get("topic", "Общий тест")
 
-    import json
     with open("data/questions.json", "r", encoding="utf-8") as f:
         all_questions = json.load(f)
 
     questions_map = {str(q["id"]): q for q in all_questions}
-    score = 0
-    max_score = 0
+    score = 0.0
+    max_score = 0.0
     details = []
 
     question_ids = form_data.getlist("question_ids")
@@ -176,13 +201,14 @@ async def submit_test(request: Request):
         if not q:
             continue
 
-        max_score += q.get("points", 1)
+        points = q.get("points", 1)
+        max_score += points
         user_answer = form_data.getlist(f"q_{q_id}")
         correct = set(q.get("correct", []))
         chosen = set(user_answer)
 
         is_correct = chosen == correct
-        earned = q.get("points", 1) if is_correct else 0
+        earned = points if is_correct else 0
         score += earned
 
         details.append({
@@ -211,11 +237,14 @@ async def result_page(request: Request, result_id: int):
     if not result:
         return HTMLResponse("Результат не найден", status_code=404)
 
-    return templates.TemplateResponse("result.html", {
-        "request": request,
-        "user": user,
-        "result": result
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="result.html",
+        context={
+            "user": user,
+            "result": result
+        }
+    )
 
 # ========== Профиль ==========
 
@@ -226,8 +255,11 @@ async def profile(request: Request):
         return RedirectResponse("/login", status_code=303)
 
     results = database.get_user_results(user["id"])
-    return templates.TemplateResponse("profile.html", {
-        "request": request,
-        "user": user,
-        "results": results
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="profile.html",
+        context={
+            "user": user,
+            "results": results
+        }
+    )
