@@ -8,99 +8,77 @@
 <body>
     <div class="container">
         <div class="card">
-            <h1>Подготовка к защите по ИБ</h1>
-
-            <form action="/start" method="post" id="startForm">
-                <div class="form-group">
-                    <label>Ваш ник:</label>
-                    <input type="text" name="username" id="usernameInput" required placeholder="Например, DimaP">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h1 style="margin: 0;">Подготовка к защите по ИБ</h1>
+                <div>
+                    {% if user %}
+                        <span style="margin-right: 15px;">Привет, <b>{{ user.username }}</b></span>
+                        <a href="/profile" class="btn" style="padding: 8px 14px; font-size: 14px;">Профиль</a>
+                        <a href="/logout" class="btn" style="padding: 8px 14px; font-size: 14px; background: #64748b;">Выйти</a>
+                    {% else %}
+                        <a href="/login" class="btn" style="padding: 8px 14px; font-size: 14px;">Войти</a>
+                        <a href="/register" class="btn" style="padding: 8px 14px; font-size: 14px; background: #64748b;">Регистрация</a>
+                    {% endif %}
                 </div>
+            </div>
 
+            {% if user %}
+            <form action="/start" method="post" id="startForm">
                 <div class="form-group">
                     <label>Режим:</label>
                     <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: var(--bg); padding: 10px; border-radius: 6px;">
                         <input type="checkbox" name="marathon" value="true" style="width: 20px; height: 20px;">
-                        <span> Экзамен</span>
+                        <span>Экзамен</span>
                     </label>
                 </div>
 
-                                <div class="form-group">
+                <div class="form-group">
                     <label>Выберите темы (можно несколько):</label>
 
-                    <!-- Специальный чекбокс для "Общего теста" -->
                     <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg); border-radius: 6px; margin-bottom: 10px; cursor: pointer;">
                         <input type="checkbox" name="topics" value="general" id="generalCheckbox" style="width: 20px; height: 20px;">
-                        <span> Общий тест (все темы сразу)</span>
+                        <span>Общий тест (все темы сразу)</span>
                     </label>
 
                     <div style="display: flex; flex-direction: column; gap: 8px; padding-left: 10px;">
+                        {% for topic in topics %}
                         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="Нормативная основа ИБ" class="topic-checkbox" style="width: 18px; height: 18px;">
-                            <span>Нормативная основа ИБ</span>
+                            <input type="checkbox" name="topics" value="{{ topic }}" class="topic-checkbox" style="width: 18px; height: 18px;">
+                            <span>{{ topic }}</span>
                         </label>
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="Основы ИБ" class="topic-checkbox" style="width: 18px; height: 18px;">
-                            <span>Основы ИБ</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="Сети" class="topic-checkbox" style="width: 18px; height: 18px;">
-                            <span>Сети</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="Операционные системы" class="topic-checkbox" style="width: 18px; height: 18px;">
-                            <span>Операционные системы</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="Управление персоналом" class="topic-checkbox" style="width: 18px; height: 18px;">
-                            <span>Управление персоналом</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="Вредоносное ПО и инциденты" class="topic-checkbox" style="width: 18px; height: 18px;">
-                            <span>Вредоносное ПО и инциденты</span>
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="Сертификация и лицензирование" class="topic-checkbox" style="width: 18px; height: 18px;">
-                            <span>Сертификация и лицензирование</span>
-                        </label>
+                        {% endfor %}
                     </div>
                 </div>
 
-
-                        <div style="display: flex; gap: 15px; margin-top: 25px;">
-        <button type="submit" class="btn">Начать тест</button>
-        <a href="/profile" class="btn" style="background: #64748b;"> Мой профиль</a>
-    </div>
+                <button type="submit" class="btn">Начать тест</button>
             </form>
+            {% else %}
+                <p style="text-align: center; font-size: 18px; margin: 40px 0;">
+                    Чтобы проходить тесты, нужно <a href="/login">войти</a> или <a href="/register">зарегистрироваться</a>.
+                </p>
+            {% endif %}
         </div>
     </div>
 
     <script>
-        const savedNick = localStorage.getItem('username');
-        if (savedNick) {
-            document.getElementById('usernameInput').value = savedNick;
-        }
-        document.getElementById('startForm').addEventListener('submit', (e) => {
-            const nick = document.getElementById('usernameInput').value;
-            localStorage.setItem('username', nick);
-        });
-    </script>
-    <script>
         const generalCheckbox = document.getElementById('generalCheckbox');
         const topicCheckboxes = document.querySelectorAll('.topic-checkbox');
 
-        generalCheckbox.addEventListener('change', () => {
-            if (generalCheckbox.checked) {
-                topicCheckboxes.forEach(cb => cb.checked = false);
-            }
-        });
-
-        topicCheckboxes.forEach(cb => {
-            cb.addEventListener('change', () => {
-                if (cb.checked) {
-                    generalCheckbox.checked = false;
+        if (generalCheckbox) {
+            generalCheckbox.addEventListener('change', () => {
+                if (generalCheckbox.checked) {
+                    topicCheckboxes.forEach(cb => cb.checked = false);
                 }
             });
-        });
+
+            topicCheckboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    if (cb.checked) {
+                        generalCheckbox.checked = false;
+                    }
+                });
+            });
+        }
     </script>
 </body>
 </html>
