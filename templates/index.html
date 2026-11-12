@@ -60,14 +60,12 @@
                 </button>
             </form>
 
-            {% else %}
-                <div style="text-align: center; padding: 30px 10px;">
-                    <p style="margin-bottom: 16px; font-size: 16px;">
-                        Чтобы проходить тесты, нужно войти в аккаунт
-                    </p>
-                    <a href="/login" class="btn">Войти</a>
-                    <a href="/register" class="btn btn-gray" style="margin-left: 8px;">Регистрация</a>
-                </div>
+                {% else %}
+    <div style="text-align: center; padding: 30px 10px;">
+        <p style="margin-bottom: 8px; font-size: 16px; color: #64748b;">
+            Чтобы проходить тесты, нужно войти в аккаунт
+        </p>
+    </div>
             {% endif %}
         </div>
     </div>
