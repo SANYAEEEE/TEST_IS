@@ -2,36 +2,44 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Регистрация</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="container">
-    <div class="card">
-        <h1>Регистрация</h1>
+    <div class="container">
+        <div class="card" style="max-width: 420px; margin: 40px auto;">
+            <h1 style="text-align: center; margin-bottom: 20px;">Регистрация</h1>
 
-        {% if error %}
-            <p style="color: #dc2626; margin-bottom: 15px;">{{ error }}</p>
-        {% endif %}
+            {% if error %}
+                <div style="background: #fef2f2; color: #dc2626; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;">
+                    {{ error }}
+                </div>
+            {% endif %}
 
-        <form method="post">
-            <div class="form-group">
-                <label>Ник:</label>
-                <input type="text" name="username" required minlength="3" placeholder="Придумай ник">
-            </div>
-            <div class="form-group">
-                <label>Пароль:</label>
-                <input type="password" name="password" required minlength="4">
-            </div>
-            <div class="form-group">
-                <label>Повтори пароль:</label>
-                <input type="password" name="password2" required minlength="4">
-            </div>
-            <button type="submit" class="btn">Зарегистрироваться</button>
-        </form>
+            <form method="post">
+                <div class="form-group">
+                    <label>Ник</label>
+                    <input type="text" name="username" required minlength="3" placeholder="Придумайте ник">
+                </div>
+                <div class="form-group">
+                    <label>Пароль</label>
+                    <input type="password" name="password" required minlength="4" placeholder="Минимум 4 символа">
+                </div>
+                <div class="form-group">
+                    <label>Повторите пароль</label>
+                    <input type="password" name="password2" required minlength="4" placeholder="Ещё раз пароль">
+                </div>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 8px;">Зарегистрироваться</button>
+            </form>
 
-        <p style="margin-top: 20px;">Уже есть аккаунт? <a href="/login">Войти</a></p>
+            <p style="text-align: center; margin-top: 20px; font-size: 14px;">
+                Уже есть аккаунт? <a href="/login" style="color: var(--primary);">Войти</a>
+            </p>
+            <p style="text-align: center; margin-top: 10px;">
+                <a href="/" style="color: #64748b; font-size: 13px;">← На главную</a>
+            </p>
+        </div>
     </div>
-</div>
 </body>
 </html>

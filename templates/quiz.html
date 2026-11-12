@@ -2,21 +2,70 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Прохождение теста</title>
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .question-card {
+            margin-bottom: 18px;
+        }
+        .question-num {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+        .order-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            background: #f0f9ff;
+            padding: 10px 12px;
+            border-radius: 8px;
+        }
+        .order-row select {
+            width: 70px;
+            padding: 6px;
+        }
+        .match-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .match-row span {
+            flex: 1;
+            font-weight: 500;
+        }
+        .match-row select {
+            flex: 1.3;
+            padding: 8px;
+        }
+    </style>
 </head>
 <body>
     <div id="timer">00:00</div>
+
     <div class="container">
         <form action="/submit" method="post" id="quizForm">
             <input type="hidden" name="username" value="{{ username }}">
             <input type="hidden" name="topic" value="{{ topic }}">
 
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="header">
+                    <h1 style="font-size: 1.2rem;">{{ topic }}</h1>
+                    <span style="font-size: 14px; color: #64748b;">{{ questions|length }} вопросов</span>
+                </div>
+            </div>
+
             {% for q in questions %}
             <input type="hidden" name="question_ids" value="{{ q.id }}">
-            <div class="card">
-                <h3>Вопрос {{ loop.index }} ({{ q.difficulty }}, {{ q.points }} б.)</h3>
-                <p>{{ q.question }}</p>
+
+            <div class="card question-card">
+                <div class="question-num">
+                    Вопрос {{ loop.index }} · {{ q.difficulty }} · {{ q.points }} б.
+                </div>
+                <p style="font-weight: 500; margin-bottom: 12px;">{{ q.question }}</p>
 
                 {% if q.type in ["single", "multi", "case"] %}
                     {% for opt in q.options %}
@@ -28,24 +77,29 @@
                     {% endfor %}
 
                 {% elif q.type == "ordering" %}
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 10px;">
+                        Укажите правильный порядок (1 — первый шаг)
+                    </p>
                     {% for opt in q.options %}
-                    <div style="margin-bottom: 10px; display: flex; align-items: center;">
-                        <span style="flex: 1;">{{ opt }}</span>
-                        <select name="q_{{ q.id }}_order_{{ loop.index0 }}" style="width: 80px;">
-                            <option value="">-</option>
+                    <div class="order-row">
+                        <select name="q_{{ q.id }}_order_{{ loop.index0 }}" required>
+                            <option value="">—</option>
                             {% for i in range(1, q.options|length + 1) %}
                             <option value="{{ i }}">{{ i }}</option>
                             {% endfor %}
                         </select>
+                        <span>{{ opt }}</span>
                     </div>
                     {% endfor %}
-                    <small style="color: gray;">Укажите правильный порядок цифрами (1 - первый шаг и т.д.)</small>
 
                 {% elif q.type == "matching" %}
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 10px;">
+                        Сопоставьте элементы
+                    </p>
                     {% for left in q.left %}
-                    <div style="margin-bottom: 10px; display: flex; align-items: center;">
-                        <span style="flex: 1; font-weight: bold;">{{ left }}</span>
-                        <select name="q_{{ q.id }}_match_{{ left }}" style="flex: 2; padding: 8px;">
+                    <div class="match-row">
+                        <span>{{ left }}</span>
+                        <select name="q_{{ q.id }}_match_{{ left }}" required>
                             <option value="">Выберите...</option>
                             {% for right in q.right %}
                             <option value="{{ right }}">{{ right }}</option>
@@ -57,18 +111,23 @@
             </div>
             {% endfor %}
 
-            <button type="submit" class="btn" style="width: 100%; margin-bottom: 50px;">Завершить тест</button>
+            <div class="card">
+                <button type="submit" class="btn" style="width: 100%;">
+                    Завершить тест
+                </button>
+            </div>
         </form>
     </div>
 
     <script>
-    let seconds = 0;
-    setInterval(() => {
-        seconds++;
-        const m = String(Math.floor(seconds / 60)).padStart(2, '0');
-        const s = String(seconds % 60).padStart(2, '0');
-        document.getElementById('timer').textContent = `${m}:${s}`;
-    }, 1000);
-</script>
+        let seconds = 0;
+        const timerEl = document.getElementById('timer');
+        setInterval(() => {
+            seconds++;
+            const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+            const s = String(seconds % 60).padStart(2, '0');
+            timerEl.textContent = `${m}:${s}`;
+        }, 1000);
+    </script>
 </body>
 </html>
