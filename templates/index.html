@@ -2,60 +2,72 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Тест по ИБ</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h1 style="margin: 0;">Подготовка к защите по ИБ</h1>
-                <div>
+            <!-- Шапка -->
+            <div class="header">
+                <h1>Подготовка к защите по ИБ</h1>
+                <div class="header-actions">
                     {% if user %}
-                        <span style="margin-right: 15px;">Привет, <b>{{ user.username }}</b></span>
-                        <a href="/profile" class="btn" style="padding: 8px 14px; font-size: 14px;">Профиль</a>
-                        <a href="/logout" class="btn" style="padding: 8px 14px; font-size: 14px; background: #64748b;">Выйти</a>
+                        <span>Привет, <b>{{ user.username }}</b></span>
+                        <a href="/profile" class="btn">Профиль</a>
+                        <a href="/logout" class="btn btn-gray">Выйти</a>
                     {% else %}
-                        <a href="/login" class="btn" style="padding: 8px 14px; font-size: 14px;">Войти</a>
-                        <a href="/register" class="btn" style="padding: 8px 14px; font-size: 14px; background: #64748b;">Регистрация</a>
+                        <a href="/login" class="btn">Войти</a>
+                        <a href="/register" class="btn btn-gray">Регистрация</a>
                     {% endif %}
                 </div>
             </div>
 
             {% if user %}
             <form action="/start" method="post" id="startForm">
+
+                <!-- Режим экзамена -->
                 <div class="form-group">
-                    <label>Режим:</label>
-                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: var(--bg); padding: 10px; border-radius: 6px;">
-                        <input type="checkbox" name="marathon" value="true" style="width: 20px; height: 20px;">
-                        <span>Экзамен</span>
+                    <label>Режим</label>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="marathon" value="true">
+                        <span>Экзамен (больше вопросов)</span>
                     </label>
                 </div>
 
+                <!-- Выбор тем -->
                 <div class="form-group">
-                    <label>Выберите темы (можно несколько):</label>
+                    <label>Выберите темы</label>
 
-                    <label style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--bg); border-radius: 6px; margin-bottom: 10px; cursor: pointer;">
-                        <input type="checkbox" name="topics" value="general" id="generalCheckbox" style="width: 20px; height: 20px;">
-                        <span>Общий тест (все темы сразу)</span>
+                    <label class="checkbox-item">
+                        <input type="checkbox" name="topics" value="general" id="generalCheckbox">
+                        <span><b>Общий тест</b> (все темы)</span>
                     </label>
 
-                    <div style="display: flex; flex-direction: column; gap: 8px; padding-left: 10px;">
+                    <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
                         {% for topic in topics %}
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" name="topics" value="{{ topic }}" class="topic-checkbox" style="width: 18px; height: 18px;">
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="topics" value="{{ topic }}" class="topic-checkbox">
                             <span>{{ topic }}</span>
                         </label>
                         {% endfor %}
                     </div>
                 </div>
 
-                <button type="submit" class="btn">Начать тест</button>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 8px;">
+                    Начать тест
+                </button>
             </form>
+
             {% else %}
-                <p style="text-align: center; font-size: 18px; margin: 40px 0;">
-                    Чтобы проходить тесты, нужно <a href="/login">войти</a> или <a href="/register">зарегистрироваться</a>.
-                </p>
+                <div style="text-align: center; padding: 30px 10px;">
+                    <p style="margin-bottom: 16px; font-size: 16px;">
+                        Чтобы проходить тесты, нужно войти в аккаунт
+                    </p>
+                    <a href="/login" class="btn">Войти</a>
+                    <a href="/register" class="btn btn-gray" style="margin-left: 8px;">Регистрация</a>
+                </div>
             {% endif %}
         </div>
     </div>

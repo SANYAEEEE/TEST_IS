@@ -2,49 +2,58 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Профиль: {{ user.username }}</title>
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h1 style="margin: 0;">Профиль: {{ user.username }}</h1>
-                <div>
-                    <a href="/" class="btn" style="background: #64748b; padding: 8px 14px; font-size: 14px;">На главную</a>
-                    <a href="/logout" class="btn" style="padding: 8px 14px; font-size: 14px;">Выйти</a>
+            <!-- Шапка -->
+            <div class="header">
+                <h1>Профиль: {{ user.username }}</h1>
+                <div class="header-actions">
+                    <a href="/" class="btn btn-gray">На главную</a>
+                    <a href="/logout" class="btn">Выйти</a>
                 </div>
             </div>
 
-            <p>Дата регистрации: {{ user.created_at }}</p>
+            <p style="margin-bottom: 6px; color: #64748b; font-size: 14px;">
+                Дата регистрации: {{ user.created_at }}
+            </p>
 
-            <h2 style="margin-top: 30px;">История тестов</h2>
+            <h2>История тестов</h2>
 
             {% if results %}
-                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid var(--border); text-align: left;">
-                            <th style="padding: 10px;">Дата</th>
-                            <th style="padding: 10px;">Тема</th>
-                            <th style="padding: 10px;">Баллы</th>
-                            <th style="padding: 10px;">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for r in results %}
-                        <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding: 10px;">{{ r.created_at }}</td>
-                            <td style="padding: 10px;">{{ r.topic }}</td>
-                            <td style="padding: 10px;"><b>{{ r.score }} / {{ r.max_score }}</b></td>
-                            <td style="padding: 10px;">
-                                <a href="/result/{{ r.id }}" class="btn" style="padding: 6px 12px; font-size: 14px;">Смотреть</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+                                <th style="padding: 10px 8px;">Дата</th>
+                                <th style="padding: 10px 8px;">Тема</th>
+                                <th style="padding: 10px 8px;">Баллы</th>
+                                <th style="padding: 10px 8px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in results %}
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 10px 8px; white-space: nowrap;">{{ r.created_at }}</td>
+                                <td style="padding: 10px 8px;">{{ r.topic }}</td>
+                                <td style="padding: 10px 8px;"><b>{{ r.score }} / {{ r.max_score }}</b></td>
+                                <td style="padding: 10px 8px;">
+                                    <a href="/result/{{ r.id }}" class="btn" style="padding: 6px 12px; font-size: 13px;">Смотреть</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
-                <p>Вы ещё не проходили тесты. <a href="/">Начать сейчас</a></p>
+                <p style="margin-top: 12px; color: #64748b;">
+                    Вы ещё не проходили тесты.
+                    <a href="/" style="color: var(--primary);">Начать сейчас</a>
+                </p>
             {% endif %}
         </div>
     </div>
