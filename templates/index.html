@@ -1,94 +1,71 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест по ИБ</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <div class="container">
-        <div class="card">
-            <!-- Шапка -->
-            <div class="header">
-                <h1>Подготовка к защите по ИБ</h1>
-                <div class="header-actions">
-                    {% if user %}
-                        <span>Привет, <b>{{ user.username }}</b></span>
-                        <a href="/profile" class="btn">Профиль</a>
-                        <a href="/logout" class="btn btn-gray">Выйти</a>
-                    {% else %}
-                        <a href="/login" class="btn">Войти</a>
-                        <a href="/register" class="btn btn-gray">Регистрация</a>
-                    {% endif %}
-                </div>
-            </div>
+{% extends "base.html" %}
 
-            {% if user %}
-            <form action="/start" method="post" id="startForm">
+{% block content %}
+<div class="card">
+    <h1>Выбор теста</h1>
 
-                <!-- Режим экзамена -->
-                <div class="form-group">
-                    <label>Режим</label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="marathon" value="true">
-                        <span>Экзамен (больше вопросов)</span>
-                    </label>
-                </div>
-
-                <!-- Выбор тем -->
-                <div class="form-group">
-                    <label>Выберите темы</label>
-
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="topics" value="general" id="generalCheckbox">
-                        <span><b>Общий тест</b> (все темы)</span>
-                    </label>
-
-                    <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
-                        {% for topic in topics %}
-                        <label class="checkbox-item">
-                            <input type="checkbox" name="topics" value="{{ topic }}" class="topic-checkbox">
-                            <span>{{ topic }}</span>
-                        </label>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <button type="submit" class="btn" style="width: 100%; margin-top: 8px;">
-                    Начать тест
-                </button>
-            </form>
-
-                {% else %}
-    <div style="text-align: center; padding: 30px 10px;">
-        <p style="margin-bottom: 8px; font-size: 16px; color: #64748b;">
-            Чтобы проходить тесты, нужно войти в аккаунт
-        </p>
-    </div>
-            {% endif %}
+    {% if user %}
+    <form action="/start" method="post" id="startForm">
+        <div class="form-group">
+            <label class="mode-label">
+                <input type="radio" name="mode" value="practice" checked>
+                Обычный режим <span class="muted">(таймер только считает время)</span>
+            </label>
+            <label class="mode-label">
+                <input type="radio" name="mode" value="exam">
+                Экзамен <span class="muted">(лимит 20 минут)</span>
+            </label>
         </div>
-    </div>
 
-    <script>
-        const generalCheckbox = document.getElementById('generalCheckbox');
-        const topicCheckboxes = document.querySelectorAll('.topic-checkbox');
+        <div class="form-group">
+            <label class="checkbox-item">
+                <input type="checkbox" name="general" value="1" id="generalCheckbox" checked>
+                <span>Общий тест (все темы)</span>
+            </label>
+        </div>
 
-        if (generalCheckbox) {
-            generalCheckbox.addEventListener('change', () => {
-                if (generalCheckbox.checked) {
-                    topicCheckboxes.forEach(cb => cb.checked = false);
-                }
-            });
+        <div class="form-group">
+            <p class="muted" style="margin-bottom: 8px;">Или выберите отдельные темы:</p>
+            <div class="topics-grid">
+                {% for topic in topics %}
+                <label class="checkbox-item">
+                    <input type="checkbox" name="topics" value="{{ topic }}" class="topic-checkbox">
+                    <span>{{ topic }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
 
-            topicCheckboxes.forEach(cb => {
-                cb.addEventListener('change', () => {
-                    if (cb.checked) {
-                        generalCheckbox.checked = false;
-                    }
-                });
-            });
+        <div class="form-group">
+            <label>Количество вопросов
+                <input type="number" name="count" value="20" min="5" max="100" style="width: 100px;">
+            </label>
+        </div>
+
+        <button type="submit" class="btn">Начать тест</button>
+    </form>
+    {% else %}
+    <p class="center-msg">
+        Чтобы проходить тесты, нужно <a href="/login">войти</a> или <a href="/register">зарегистрироваться</a>.
+    </p>
+    {% endif %}
+</div>
+
+<script>
+const generalCheckbox = document.getElementById('generalCheckbox');
+const topicCheckboxes = document.querySelectorAll('.topic-checkbox');
+
+if (generalCheckbox) {
+    generalCheckbox.addEventListener('change', () => {
+        if (generalCheckbox.checked) {
+            topicCheckboxes.forEach(cb => cb.checked = false);
         }
-    </script>
-</body>
-</html>
+    });
+    topicCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (cb.checked) generalCheckbox.checked = false;
+        });
+    });
+}
+</script>
+{% endblock %}

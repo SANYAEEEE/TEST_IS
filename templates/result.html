@@ -1,89 +1,61 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Результаты теста</title>
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-    <div class="container">
-        <!-- Итоги -->
-        <div class="card" style="text-align: center;">
-            <h1>Результат</h1>
-            <p style="color: #64748b; margin: 6px 0 16px;">{{ result.topic }}</p>
+{% extends "base.html" %}
+{% block title %}Результат{% endblock %}
 
-            <div style="font-size: 2.2rem; font-weight: 700; color: var(--primary); margin: 10px 0;">
-                {{ result.score }} / {{ result.max_score }}
-            </div>
+{% block content %}
+<div class="card result-summary">
+    <h1>Результат</h1>
+    <div class="score-big">{{ result.score }} / {{ result.max_score }}</div>
+    <p class="muted">
+        {{ result.topic }} ·
+        {{ "Экзамен" if result.is_exam else "Обычный режим" }} ·
+        {{ result.created_at }}
+    </p>
+    <a href="/" class="btn">На главную</a>
+    <a href="/profile" class="btn btn-secondary">В профиль</a>
+</div>
 
-            {% set percent = (result.score / result.max_score * 100) if result.max_score > 0 else 0 %}
-            <p style="font-size: 1.1rem; margin-bottom: 18px;">
-                {{ percent | round(1) }}%
-            </p>
-
-            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-                <a href="/" class="btn">Пройти ещё</a>
-                <a href="/profile" class="btn btn-gray">В профиль</a>
-            </div>
-        </div>
-
-        <!-- Разбор -->
-        <h2 style="margin: 20px 0 12px 4px;">Разбор ответов</h2>
-
-        {% for item in result.details %}
-        <div class="card" style="border-left: 5px solid {% if item.is_correct %}#16a34a{% else %}#dc2626{% endif %};">
-            <p style="font-weight: 600; margin-bottom: 8px;">
-                {{ item.question.question }}
-            </p>
-
-            <p style="font-size: 14px; margin-bottom: 4px;">
-                <b>Ваш ответ:</b>
-                <span class="{% if item.is_correct %}correct{% else %}incorrect{% endif %}">
-                    {% if item.question.type == "matching" %}
-                        {% for k, v in item.user_answer.items() %}
-                            {{ k }} → {{ v }}{% if not loop.last %}; {% endif %}
-                        {% endfor %}
-                    {% elif item.question.type == "ordering" %}
-                        {{ item.user_answer | join(' → ') }}
-                    {% else %}
-                        {% if item.user_answer %}
-                            {{ item.user_answer | join(', ') }}
-                        {% else %}
-                            Нет ответа
-                        {% endif %}
-                    {% endif %}
-                </span>
-            </p>
-
-            {% if not item.is_correct %}
-            <p style="font-size: 14px; margin-bottom: 6px;">
-                <b>Правильно:</b>
-                <span class="correct">
-                    {% if item.question.type == "matching" %}
-                        {% for k, v in item.question.correct.items() %}
-                            {{ k }} → {{ v }}{% if not loop.last %}; {% endif %}
-                        {% endfor %}
-                    {% elif item.question.type == "ordering" %}
-                        {{ item.question.correct | join(' → ') }}
-                    {% else %}
-                        {{ item.question.correct | join(', ') }}
-                    {% endif %}
-                </span>
-            </p>
-            {% endif %}
-
-            {% if item.question.explanation %}
-            <div class="explanation">
-                {{ item.question.explanation }}
-            </div>
-            {% endif %}
-
-            <p style="font-size: 12px; color: #94a3b8; margin-top: 8px;">
-                {{ item.earned }} из {{ item.question.points }} б.
-            </p>
-        </div>
-        {% endfor %}
+{% for d in result.details %}
+<div class="card review-card {{ 'correct' if d.is_correct else 'wrong' }}">
+    <div class="q-header">
+        <span class="q-num">{{ loop.index }}</span>
+        <span class="badge {{ 'badge-ok' if d.is_correct else 'badge-fail' }}">
+            {{ "Верно" if d.is_correct else "Ошибка" }} · {{ d.points }}/{{ d.max_points }}
+        </span>
     </div>
-</body>
-</html>
+    <p class="q-text">{{ d.question }}</p>
+
+    <div class="review-answers">
+        <p><b>Ваш ответ:</b>
+            {% if d.user_answer is string %}
+                {{ d.user_answer or "—" }}
+            {% elif d.user_answer is mapping %}
+                <ul>
+                {% for k, v in d.user_answer.items() %}
+                    <li>{{ k }} → {{ v or "—" }}</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                {{ d.user_answer | join(", ") if d.user_answer else "—" }}
+            {% endif %}
+        </p>
+        {% if not d.is_correct %}
+        <p><b>Правильный ответ:</b>
+            {% if d.correct is mapping %}
+                <ul>
+                {% for k, v in d.correct.items() %}
+                    <li>{{ k }} → {{ v }}</li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                {{ d.correct | join(", ") }}
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+
+    {% if d.explanation %}
+    <div class="explanation">{{ d.explanation }}</div>
+    {% endif %}
+</div>
+{% endfor %}
+{% endblock %}

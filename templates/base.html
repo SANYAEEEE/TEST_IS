@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Подготовка к защите ИБ{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="page">
+        <header class="header">
+            <div class="header-left">
+                <a href="/" class="logo">Подготовка к защите ИБ</a>
+            </div>
+            <div class="header-right">
+                {% if user %}
+                    <span class="user-name">{{ user.username }}</span>
+                    <a href="/profile" class="btn btn-sm">Профиль</a>
+                    <a href="/logout" class="btn btn-sm btn-secondary">Выйти</a>
+                {% else %}
+                    <a href="/login" class="btn btn-sm">Войти</a>
+                    <a href="/register" class="btn btn-sm btn-secondary">Регистрация</a>
+                {% endif %}
+            </div>
+        </header>
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
