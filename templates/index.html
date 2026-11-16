@@ -2,16 +2,15 @@
 {% block content %}
 <div class="card">
   <h1>Тренировка</h1>
-
   {% if user %}
-  <form action="/start" method="post" id="startForm">
+  <form action="/start" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="form-group">
       <label class="check">
         <input type="checkbox" name="general" value="1" id="generalCheckbox" checked>
         <span>Общий тест</span>
       </label>
     </div>
-
     <div class="form-group">
       <p class="muted" style="margin-bottom:8px">Или отдельные темы:</p>
       <div class="topics">
@@ -23,32 +22,30 @@
         {% endfor %}
       </div>
     </div>
-
+    <div class="form-group">
+      <p class="muted" style="margin-bottom:8px">Сложность:</p>
+      <div class="topics">
+        <label class="check"><input type="radio" name="difficulty" value="" checked><span>Любая</span></label>
+        <label class="check"><input type="radio" name="difficulty" value="Лёгкий"><span>Лёгкий</span></label>
+        <label class="check"><input type="radio" name="difficulty" value="Средний"><span>Средний</span></label>
+        <label class="check"><input type="radio" name="difficulty" value="Сложный"><span>Сложный</span></label>
+      </div>
+    </div>
     <div class="form-group">
       <label>Количество вопросов
         <input type="number" name="count" value="20" min="5" max="100" style="width:100px">
       </label>
     </div>
-
     <button type="submit" class="btn">Начать</button>
   </form>
   {% else %}
-  <p class="muted">Чтобы проходить тесты, <a href="/login">войдите</a> или <a href="/register">зарегистрируйтесь</a>.</p>
+  <p class="muted"><a href="/login">Войдите</a>, чтобы проходить тесты.</p>
   {% endif %}
 </div>
-
 <script>
-const generalCheckbox = document.getElementById('generalCheckbox');
-const topicCheckboxes = document.querySelectorAll('.topic-checkbox');
-if (generalCheckbox) {
-  generalCheckbox.addEventListener('change', () => {
-    if (generalCheckbox.checked) topicCheckboxes.forEach(cb => cb.checked = false);
-  });
-  topicCheckboxes.forEach(cb => {
-    cb.addEventListener('change', () => {
-      if (cb.checked) generalCheckbox.checked = false;
-    });
-  });
-}
+const g=document.getElementById('generalCheckbox');
+const ts=document.querySelectorAll('.topic-checkbox');
+if(g){g.onchange=()=>{if(g.checked)ts.forEach(c=>c.checked=false)};
+ts.forEach(c=>c.onchange=()=>{if(c.checked)g.checked=false});}
 </script>
 {% endblock %}

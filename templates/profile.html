@@ -30,6 +30,7 @@
   {% if error %}<p class="error">{{ error }}</p>{% endif %}
   {% if ok %}<p class="ok">{{ ok }}</p>{% endif %}
   <form action="/profile" method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="form-group">
       <label>О себе
         <textarea name="bio" rows="3" maxlength="500">{{ user.bio or "" }}</textarea>

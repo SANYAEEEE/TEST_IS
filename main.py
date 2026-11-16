@@ -1,8 +1,12 @@
 import io
 import json
+import os
 import random
+import re
+import secrets
 import time
 import traceback
+from collections import defaultdict, deque
 from pathlib import Path
 from typing import Optional
 from uuid import uuid4
@@ -16,15 +20,17 @@ from starlette.middleware.sessions import SessionMiddleware
 
 import database as db
 
-SECRET_KEY = "change-this-to-a-long-random-string"
+SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 QUESTIONS_PATH = Path("data/questions.json")
 EXAM_QUESTION_COUNT = 25
 EXAM_TIME_LIMIT = 20 * 60
 MAX_AVATAR_SIZE = 2 * 1024 * 1024
 AVATAR_DIR = Path("static/avatars")
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+DEBUG = os.environ.get("DEBUG", "0") == "1"
 
-# Экзамен: только отдельные темы (склейка близких из банка)
+USERNAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё0-9_]{3,32}$")
+
 EXAM_TOPICS = {
     "Нормативная основа и право ИБ": [
         "Нормативная основа ИБ",
@@ -57,8 +63,31 @@ EXAM_TOPICS = {
     ],
 }
 
+# простой rate-limit: ip -> времена запросов
+_rate: dict[str, deque] = defaultdict(lambda: deque(maxlen=40))
+
+
+def rate_limit(ip: str, limit: int = 10, window: int = 60) -> bool:
+    """True = можно, False = слишком часто."""
+    now = time.time()
+    q = _rate[ip]
+    while q and now - q[0] > window:
+        q.popleft()
+    if len(q) >= limit:
+        return False
+    q.append(now)
+    return True
+
+
 app = FastAPI(title="Подготовка к защите ИБ")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    session_cookie="ib_session",
+    max_age=60 * 60 * 24 * 7,
+    same_site="lax",
+    https_only=False,  # на Render с HTTPS можно True
+)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -78,20 +107,42 @@ except Exception as e:
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def security_headers(request: Request, call_next):
     print(f">>> {request.method} {request.url.path}", flush=True)
     try:
         response = await call_next(request)
-        print(f"<<< {response.status_code} {request.method} {request.url.path}", flush=True)
-        return response
     except Exception:
         print(traceback.format_exc(), flush=True)
-        raise
+        if DEBUG:
+            raise
+        return HTMLResponse("Внутренняя ошибка сервера", status_code=500)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "same-origin"
+    response.headers["Cache-Control"] = "no-store"
+    print(f"<<< {response.status_code} {request.method} {request.url.path}", flush=True)
+    return response
+
+
+def client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
 
 
 def get_current_user(request: Request) -> Optional[dict]:
     uid = request.session.get("user_id")
     return db.get_user_by_id(uid) if uid else None
+
+
+def csrf_token(request: Request) -> str:
+    token = request.session.get("csrf")
+    if not token:
+        token = secrets.token_hex(16)
+        request.session["csrf"] = token
+    return token
+
+
+def check_csrf(request: Request, token: str) -> bool:
+    return bool(token) and secrets.compare_digest(token, request.session.get("csrf", ""))
 
 
 def build_chart(results: list) -> dict:
@@ -104,6 +155,26 @@ def build_chart(results: list) -> dict:
         ],
         "is_exam": [bool(r["is_exam"]) for r in chron],
     }
+
+
+def filter_by_difficulty(pool: list, difficulty: str | None) -> list:
+    if not difficulty:
+        return pool
+    d = difficulty.lower().replace("ё", "е")
+    out = []
+    for q in pool:
+        qd = str(q.get("difficulty", "")).lower().replace("ё", "е")
+        if qd == d:
+            out.append(q)
+    return out
+
+
+def pick_exam_variant(pool: list, topic: str, variant: int, n: int) -> list:
+    if not pool:
+        return []
+    n = min(n, len(pool))
+    rng = random.Random(f"{topic}::{variant}")
+    return rng.sample(pool, n)
 
 
 def public_question(q: dict) -> dict:
@@ -204,7 +275,7 @@ def startup():
 async def index(request: Request):
     user = get_current_user(request)
     return templates.TemplateResponse("index.html", {
-        "request": request, "user": user, "topics": TOPICS,
+        "request": request, "user": user, "topics": TOPICS, "csrf": csrf_token(request),
     })
 
 
@@ -217,33 +288,45 @@ async def exam_page(request: Request):
         "request": request,
         "user": user,
         "exam_topics": list(EXAM_TOPICS.keys()),
+        "variants": list(range(1, 11)),
+        "csrf": csrf_token(request),
     })
 
 
 @app.post("/exam/start")
-async def exam_start(request: Request, topic: str = Form(...)):
+async def exam_start(
+    request: Request,
+    topic: str = Form(...),
+    variant: int = Form(...),
+    csrf: str = Form(""),
+):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
+    if not check_csrf(request, csrf):
+        return HTMLResponse("Неверный CSRF-токен", status_code=400)
 
     bank_topics = EXAM_TOPICS.get(topic)
     if not bank_topics:
         return RedirectResponse("/exam", status_code=303)
 
+    try:
+        variant = max(1, min(int(variant), 10))
+    except Exception:
+        variant = 1
+
     pool = [q for q in ALL_QUESTIONS if q["topic"] in bank_topics]
-    if not pool:
+    selected = pick_exam_variant(pool, topic, variant, EXAM_QUESTION_COUNT)
+    if not selected:
         return RedirectResponse("/exam", status_code=303)
 
-    n = min(EXAM_QUESTION_COUNT, len(pool))
-    selected = random.sample(pool, n)
     request.session["test"] = {
         "question_ids": [q["id"] for q in selected],
-        "topic_label": topic,
+        "topic_label": f"{topic} · вариант {variant}",
         "mode": "exam",
         "started_at": time.time(),
         "time_limit": EXAM_TIME_LIMIT,
     }
-    print(f"EXAM start {user['username']} topic={topic} n={n}", flush=True)
     return RedirectResponse("/quiz", status_code=303)
 
 
@@ -257,38 +340,85 @@ async def leaderboard(request: Request):
 
 @app.get("/register", response_class=HTMLResponse)
 async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request, "error": None})
+    return templates.TemplateResponse("register.html", {
+        "request": request, "error": None, "csrf": csrf_token(request),
+    })
 
 
 @app.post("/register")
-async def register(request: Request, username: str = Form(...), password: str = Form(...)):
-    username = username.strip()
-    if len(username) < 3 or len(password) < 4:
+async def register(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    csrf: str = Form(""),
+):
+    if not rate_limit(client_ip(request), limit=5, window=60):
         return templates.TemplateResponse("register.html", {
-            "request": request, "error": "Логин от 3 символов, пароль от 4",
+            "request": request, "error": "Слишком много попыток. Подождите минуту.",
+            "csrf": csrf_token(request),
+        })
+    if not check_csrf(request, csrf):
+        return templates.TemplateResponse("register.html", {
+            "request": request, "error": "Сессия устарела, обновите страницу.",
+            "csrf": csrf_token(request),
+        })
+
+    username = username.strip()
+    if not USERNAME_RE.match(username):
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "error": "Логин: 3–32 символа, буквы/цифры/_",
+            "csrf": csrf_token(request),
+        })
+    if not (4 <= len(password) <= 72):
+        return templates.TemplateResponse("register.html", {
+            "request": request, "error": "Пароль: от 4 до 72 символов",
+            "csrf": csrf_token(request),
         })
     if not db.create_user(username, password):
         return templates.TemplateResponse("register.html", {
             "request": request, "error": "Такой логин уже занят",
+            "csrf": csrf_token(request),
         })
     user = db.verify_user(username, password)
     request.session["user_id"] = user["id"]
+    request.session["csrf"] = secrets.token_hex(16)
     return RedirectResponse("/", status_code=303)
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse("login.html", {
+        "request": request, "error": None, "csrf": csrf_token(request),
+    })
 
 
 @app.post("/login")
-async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...),
+    csrf: str = Form(""),
+):
+    if not rate_limit(client_ip(request), limit=8, window=60):
+        return templates.TemplateResponse("login.html", {
+            "request": request, "error": "Слишком много попыток. Подождите минуту.",
+            "csrf": csrf_token(request),
+        })
+    if not check_csrf(request, csrf):
+        return templates.TemplateResponse("login.html", {
+            "request": request, "error": "Сессия устарела, обновите страницу.",
+            "csrf": csrf_token(request),
+        })
+
     user = db.verify_user(username.strip(), password)
     if not user:
         return templates.TemplateResponse("login.html", {
             "request": request, "error": "Неверный логин или пароль",
+            "csrf": csrf_token(request),
         })
     request.session["user_id"] = user["id"]
+    request.session["csrf"] = secrets.token_hex(16)
     return RedirectResponse("/", status_code=303)
 
 
@@ -305,12 +435,9 @@ async def profile(request: Request):
         return RedirectResponse("/login", status_code=303)
     results = db.get_user_results(user["id"])
     return templates.TemplateResponse("profile.html", {
-        "request": request,
-        "user": user,
-        "results": results,
-        "chart": build_chart(results),
-        "error": None,
-        "ok": None,
+        "request": request, "user": user, "results": results,
+        "chart": build_chart(results), "error": None, "ok": None,
+        "csrf": csrf_token(request),
     })
 
 
@@ -318,48 +445,57 @@ async def profile(request: Request):
 async def profile_update(
     request: Request,
     bio: str = Form(""),
+    csrf: str = Form(""),
     avatar: UploadFile = File(None),
 ):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
+    if not check_csrf(request, csrf):
+        results = db.get_user_results(user["id"])
+        return templates.TemplateResponse("profile.html", {
+            "request": request, "user": user, "results": results,
+            "chart": build_chart(results), "error": "Сессия устарела", "ok": None,
+            "csrf": csrf_token(request),
+        })
 
-    error = None
-    ok = None
+    error = ok = None
     avatar_path = None
     bio = (bio or "").strip()[:500]
-
     if avatar and avatar.filename:
         try:
             avatar_path = await save_avatar(avatar)
         except ValueError as e:
             error = str(e)
-
     if not error:
         db.update_profile(user["id"], bio=bio, avatar=avatar_path)
         ok = "Профиль обновлён"
         user = db.get_user_by_id(user["id"])
-
     results = db.get_user_results(user["id"])
     return templates.TemplateResponse("profile.html", {
-        "request": request,
-        "user": user,
-        "results": results,
-        "chart": build_chart(results),
-        "error": error,
-        "ok": ok,
+        "request": request, "user": user, "results": results,
+        "chart": build_chart(results), "error": error, "ok": ok,
+        "csrf": csrf_token(request),
     })
 
 
 @app.post("/start")
-async def start_test(request: Request, count: int = Form(20)):
+async def start_test(
+    request: Request,
+    count: int = Form(20),
+    difficulty: str = Form(""),
+    csrf: str = Form(""),
+):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
+    if not check_csrf(request, csrf):
+        return RedirectResponse("/", status_code=303)
 
     form = await request.form()
     general = form.get("general")
     topics = form.getlist("topics")
+    difficulty = (difficulty or "").strip()
 
     if general or not topics:
         pool = ALL_QUESTIONS[:]
@@ -368,10 +504,17 @@ async def start_test(request: Request, count: int = Form(20)):
         pool = [q for q in ALL_QUESTIONS if q["topic"] in topics]
         topic_label = ", ".join(topics)
 
+    pool = filter_by_difficulty(pool, difficulty or None)
+    if difficulty:
+        topic_label = f"{topic_label} · {difficulty}"
+
     if not pool:
         return RedirectResponse("/", status_code=303)
 
-    count = max(1, min(int(count), len(pool), 100))
+    try:
+        count = max(1, min(int(count), len(pool), 100))
+    except Exception:
+        count = 20
     selected = random.sample(pool, count)
     request.session["test"] = {
         "question_ids": [q["id"] for q in selected],
@@ -388,24 +531,18 @@ async def quiz_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
-
     test = request.session.get("test")
     if not test:
         return RedirectResponse("/", status_code=303)
-
     questions = [
         public_question(QUESTIONS_BY_ID[qid])
-        for qid in test["question_ids"]
-        if qid in QUESTIONS_BY_ID
+        for qid in test["question_ids"] if qid in QUESTIONS_BY_ID
     ]
     return templates.TemplateResponse("quiz.html", {
-        "request": request,
-        "user": user,
-        "questions": questions,
-        "mode": test["mode"],
-        "time_limit": test.get("time_limit"),
-        "started_at": test["started_at"],
-        "topic_label": test["topic_label"],
+        "request": request, "user": user, "questions": questions,
+        "mode": test["mode"], "time_limit": test.get("time_limit"),
+        "started_at": test["started_at"], "topic_label": test["topic_label"],
+        "csrf": csrf_token(request),
     })
 
 
@@ -415,30 +552,25 @@ async def submit_test(request: Request):
         user = get_current_user(request)
         if not user:
             return RedirectResponse("/login", status_code=303)
-
         test = request.session.get("test")
         if not test:
             return RedirectResponse("/", status_code=303)
 
         form = await request.form()
-        details = []
-        total_score = 0.0
-        max_score = 0.0
+        if not check_csrf(request, form.get("csrf", "")):
+            return HTMLResponse("Неверный CSRF-токен", status_code=400)
 
+        details, total_score, max_score = [], 0.0, 0.0
         for qid in test["question_ids"]:
             q = QUESTIONS_BY_ID.get(qid)
             if not q:
                 continue
-
             max_score += q.get("points", 1)
             q_type = q.get("type")
-
             if q_type in ("single", "case"):
                 a = form.get(f"q{qid}")
                 user_answers = [a] if a else []
-            elif q_type == "multi":
-                user_answers = list(form.getlist(f"q{qid}"))
-            elif q_type == "ordering":
+            elif q_type in ("multi", "ordering"):
                 user_answers = list(form.getlist(f"q{qid}"))
             elif q_type == "matching":
                 user_answers = {}
@@ -447,14 +579,13 @@ async def submit_test(request: Request):
                     if val:
                         user_answers[left] = val
             elif q_type == "input":
-                user_answers = (form.get(f"q{qid}") or "").strip()
+                user_answers = (form.get(f"q{qid}") or "").strip()[:256]
             else:
                 user_answers = []
 
             result = grade_answer(q, user_answers)
             points = float(result.get("score", 0)) * q.get("points", 1)
             total_score += points
-
             details.append({
                 "id": qid,
                 "question": q.get("question", ""),
@@ -469,21 +600,17 @@ async def submit_test(request: Request):
 
         duration = int(time.time() - test["started_at"])
         result_id = db.save_result(
-            user_id=user["id"],
-            topic=test["topic_label"],
-            score=total_score,
-            max_score=max_score,
-            details=details,
-            duration_sec=duration,
-            is_exam=(test["mode"] == "exam"),
+            user_id=user["id"], topic=test["topic_label"],
+            score=total_score, max_score=max_score, details=details,
+            duration_sec=duration, is_exam=(test["mode"] == "exam"),
         )
         request.session.pop("test", None)
         return RedirectResponse(f"/result/{result_id}", status_code=303)
-
     except Exception:
-        tb = traceback.format_exc()
-        print(tb, flush=True)
-        return HTMLResponse(f"<h2>Ошибка</h2><pre>{tb}</pre>", status_code=500)
+        print(traceback.format_exc(), flush=True)
+        if DEBUG:
+            return HTMLResponse(f"<pre>{traceback.format_exc()}</pre>", status_code=500)
+        return HTMLResponse("Ошибка при сохранении теста", status_code=500)
 
 
 @app.get("/result/{result_id}", response_class=HTMLResponse)
@@ -491,17 +618,12 @@ async def result_page(request: Request, result_id: int):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
-
     result = db.get_result(result_id)
     if not result or result["user_id"] != user["id"]:
         return RedirectResponse("/", status_code=303)
-
     percent = round(result["score"] * 100.0 / result["max_score"], 1) if result["max_score"] else 0
     return templates.TemplateResponse("result.html", {
-        "request": request,
-        "user": user,
-        "result": result,
-        "percent": percent,
+        "request": request, "user": user, "result": result, "percent": percent,
     })
 
 

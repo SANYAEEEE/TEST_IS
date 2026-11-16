@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Экзамен{% endblock %}
-
 {% block content %}
 <div class="card">
   <h1>Экзамен</h1>
   <p class="muted">25 вопросов · 20 минут</p>
-
   {% if user %}
   <form action="/exam/start" method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="form-group">
+      <p class="muted" style="margin-bottom:8px">Тема:</p>
       <div class="topics">
         {% for t in exam_topics %}
         <label class="check">
@@ -18,10 +18,21 @@
         {% endfor %}
       </div>
     </div>
+    <div class="form-group">
+      <p class="muted" style="margin-bottom:8px">Вариант:</p>
+      <div class="topics">
+        {% for v in variants %}
+        <label class="check">
+          <input type="radio" name="variant" value="{{ v }}" {% if v == 1 %}checked{% endif %} required>
+          <span>Вариант {{ v }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
     <button type="submit" class="btn">Начать экзамен</button>
   </form>
   {% else %}
-  <p class="muted"><a href="/login">Войдите</a>, чтобы сдать экзамен.</p>
+  <p class="muted"><a href="/login">Войдите</a>.</p>
   {% endif %}
 </div>
 {% endblock %}
