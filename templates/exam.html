@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Экзамен{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Экзамен</h1>
+  <p class="muted">25 вопросов · обратный отсчёт 20 минут · результат в рейтинге</p>
+  <form action="/exam/start" method="post">
+    <div class="form-group">
+      <label>Тема экзамена
+        <select name="topic" required>
+          <option value="" disabled selected>Выберите тему</option>
+          {% for t in exam_topics %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <button class="btn" type="submit">Начать экзамен</button>
+  </form>
+</div>
+{% endblock %}

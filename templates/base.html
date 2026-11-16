@@ -1,30 +1,32 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Подготовка к защите ИБ{% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Подготовка к защите ИБ{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="page">
-        <header class="header">
-            <div class="header-left">
-                <a href="/" class="logo">Подготовка к защите ИБ</a>
-            </div>
-            <div class="header-right">
-                {% if user %}
-                    <span class="user-name">{{ user.username }}</span>
-                    <a href="/profile" class="btn btn-sm">Профиль</a>
-                    <a href="/logout" class="btn btn-sm btn-secondary">Выйти</a>
-                {% else %}
-                    <a href="/login" class="btn btn-sm">Войти</a>
-                    <a href="/register" class="btn btn-sm btn-secondary">Регистрация</a>
-                {% endif %}
-            </div>
-        </header>
-
-        {% block content %}{% endblock %}
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">Подготовка к защите ИБ</a>
+      <nav class="nav">
+        <a href="/">Тренировка</a>
+        <a href="/exam">Экзамен</a>
+        <a href="/leaderboard">Рейтинг</a>
+        {% if user %}
+          <a href="/profile">Профиль</a>
+          <span class="nav-user">{{ user.username }}</span>
+          <a class="btn btn-sm" href="/logout">Выйти</a>
+        {% else %}
+          <a href="/login">Войти</a>
+          <a class="btn btn-sm" href="/register">Регистрация</a>
+        {% endif %}
+      </nav>
     </div>
+  </header>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>
