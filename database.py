@@ -15,7 +15,6 @@ def get_conn():
 
 
 def hash_password(password: str) -> str:
-    # bcrypt принимает не больше 72 байт
     raw = password.encode("utf-8")[:72]
     return bcrypt.hashpw(raw, bcrypt.gensalt()).decode("utf-8")
 

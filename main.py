@@ -28,7 +28,6 @@ MAX_AVATAR_SIZE = 2 * 1024 * 1024
 AVATAR_DIR = Path("static/avatars")
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 DEBUG = os.environ.get("DEBUG", "0") == "1"
-
 USERNAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё0-9_]{3,32}$")
 
 EXAM_TOPICS = {
@@ -63,12 +62,10 @@ EXAM_TOPICS = {
     ],
 }
 
-# простой rate-limit: ip -> времена запросов
 _rate: dict[str, deque] = defaultdict(lambda: deque(maxlen=40))
 
 
 def rate_limit(ip: str, limit: int = 10, window: int = 60) -> bool:
-    """True = можно, False = слишком часто."""
     now = time.time()
     q = _rate[ip]
     while q and now - q[0] > window:
@@ -86,7 +83,7 @@ app.add_middleware(
     session_cookie="ib_session",
     max_age=60 * 60 * 24 * 7,
     same_site="lax",
-    https_only=False,  # на Render с HTTPS можно True
+    https_only=False,
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
@@ -167,6 +164,13 @@ def filter_by_difficulty(pool: list, difficulty: str | None) -> list:
         if qd == d:
             out.append(q)
     return out
+
+
+def exam_variant_count(pool_len: int) -> int:
+    if pool_len <= 0:
+        return 0
+    n = max(5, (pool_len + 12) // 10)
+    return min(30, n)
 
 
 def pick_exam_variant(pool: list, topic: str, variant: int, n: int) -> list:
@@ -284,11 +288,17 @@ async def exam_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
+
+    topic_variants = {}
+    for name, bank_topics in EXAM_TOPICS.items():
+        pool_len = sum(1 for q in ALL_QUESTIONS if q["topic"] in bank_topics)
+        topic_variants[name] = exam_variant_count(pool_len)
+
     return templates.TemplateResponse("exam.html", {
         "request": request,
         "user": user,
         "exam_topics": list(EXAM_TOPICS.keys()),
-        "variants": list(range(1, 11)),
+        "topic_variants": topic_variants,
         "csrf": csrf_token(request),
     })
 
@@ -310,12 +320,16 @@ async def exam_start(
     if not bank_topics:
         return RedirectResponse("/exam", status_code=303)
 
+    pool = [q for q in ALL_QUESTIONS if q["topic"] in bank_topics]
+    max_v = exam_variant_count(len(pool))
+    if max_v <= 0:
+        return RedirectResponse("/exam", status_code=303)
+
     try:
-        variant = max(1, min(int(variant), 10))
+        variant = max(1, min(int(variant), max_v))
     except Exception:
         variant = 1
 
-    pool = [q for q in ALL_QUESTIONS if q["topic"] in bank_topics]
     selected = pick_exam_variant(pool, topic, variant, EXAM_QUESTION_COUNT)
     if not selected:
         return RedirectResponse("/exam", status_code=303)
@@ -346,39 +360,27 @@ async def register_page(request: Request):
 
 
 @app.post("/register")
-async def register(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    csrf: str = Form(""),
-):
+async def register(request: Request, username: str = Form(...), password: str = Form(...), csrf: str = Form("")):
     if not rate_limit(client_ip(request), limit=5, window=60):
         return templates.TemplateResponse("register.html", {
-            "request": request, "error": "Слишком много попыток. Подождите минуту.",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Слишком много попыток. Подождите минуту.", "csrf": csrf_token(request),
         })
     if not check_csrf(request, csrf):
         return templates.TemplateResponse("register.html", {
-            "request": request, "error": "Сессия устарела, обновите страницу.",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Сессия устарела, обновите страницу.", "csrf": csrf_token(request),
         })
-
     username = username.strip()
     if not USERNAME_RE.match(username):
         return templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": "Логин: 3–32 символа, буквы/цифры/_",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Логин: 3–32 символа, буквы/цифры/_", "csrf": csrf_token(request),
         })
     if not (4 <= len(password) <= 72):
         return templates.TemplateResponse("register.html", {
-            "request": request, "error": "Пароль: от 4 до 72 символов",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Пароль: от 4 до 72 символов", "csrf": csrf_token(request),
         })
     if not db.create_user(username, password):
         return templates.TemplateResponse("register.html", {
-            "request": request, "error": "Такой логин уже занят",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Такой логин уже занят", "csrf": csrf_token(request),
         })
     user = db.verify_user(username, password)
     request.session["user_id"] = user["id"]
@@ -394,28 +396,19 @@ async def login_page(request: Request):
 
 
 @app.post("/login")
-async def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    csrf: str = Form(""),
-):
+async def login(request: Request, username: str = Form(...), password: str = Form(...), csrf: str = Form("")):
     if not rate_limit(client_ip(request), limit=8, window=60):
         return templates.TemplateResponse("login.html", {
-            "request": request, "error": "Слишком много попыток. Подождите минуту.",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Слишком много попыток. Подождите минуту.", "csrf": csrf_token(request),
         })
     if not check_csrf(request, csrf):
         return templates.TemplateResponse("login.html", {
-            "request": request, "error": "Сессия устарела, обновите страницу.",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Сессия устарела, обновите страницу.", "csrf": csrf_token(request),
         })
-
     user = db.verify_user(username.strip(), password)
     if not user:
         return templates.TemplateResponse("login.html", {
-            "request": request, "error": "Неверный логин или пароль",
-            "csrf": csrf_token(request),
+            "request": request, "error": "Неверный логин или пароль", "csrf": csrf_token(request),
         })
     request.session["user_id"] = user["id"]
     request.session["csrf"] = secrets.token_hex(16)
@@ -436,18 +429,12 @@ async def profile(request: Request):
     results = db.get_user_results(user["id"])
     return templates.TemplateResponse("profile.html", {
         "request": request, "user": user, "results": results,
-        "chart": build_chart(results), "error": None, "ok": None,
-        "csrf": csrf_token(request),
+        "chart": build_chart(results), "error": None, "ok": None, "csrf": csrf_token(request),
     })
 
 
 @app.post("/profile")
-async def profile_update(
-    request: Request,
-    bio: str = Form(""),
-    csrf: str = Form(""),
-    avatar: UploadFile = File(None),
-):
+async def profile_update(request: Request, bio: str = Form(""), csrf: str = Form(""), avatar: UploadFile = File(None)):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -455,10 +442,8 @@ async def profile_update(
         results = db.get_user_results(user["id"])
         return templates.TemplateResponse("profile.html", {
             "request": request, "user": user, "results": results,
-            "chart": build_chart(results), "error": "Сессия устарела", "ok": None,
-            "csrf": csrf_token(request),
+            "chart": build_chart(results), "error": "Сессия устарела", "ok": None, "csrf": csrf_token(request),
         })
-
     error = ok = None
     avatar_path = None
     bio = (bio or "").strip()[:500]
@@ -474,18 +459,12 @@ async def profile_update(
     results = db.get_user_results(user["id"])
     return templates.TemplateResponse("profile.html", {
         "request": request, "user": user, "results": results,
-        "chart": build_chart(results), "error": error, "ok": ok,
-        "csrf": csrf_token(request),
+        "chart": build_chart(results), "error": error, "ok": ok, "csrf": csrf_token(request),
     })
 
 
 @app.post("/start")
-async def start_test(
-    request: Request,
-    count: int = Form(20),
-    difficulty: str = Form(""),
-    csrf: str = Form(""),
-):
+async def start_test(request: Request, count: int = Form(20), difficulty: str = Form(""), csrf: str = Form("")):
     user = get_current_user(request)
     if not user:
         return RedirectResponse("/login", status_code=303)
@@ -507,7 +486,6 @@ async def start_test(
     pool = filter_by_difficulty(pool, difficulty or None)
     if difficulty:
         topic_label = f"{topic_label} · {difficulty}"
-
     if not pool:
         return RedirectResponse("/", status_code=303)
 
@@ -515,6 +493,7 @@ async def start_test(
         count = max(1, min(int(count), len(pool), 100))
     except Exception:
         count = 20
+
     selected = random.sample(pool, count)
     request.session["test"] = {
         "question_ids": [q["id"] for q in selected],
@@ -534,10 +513,7 @@ async def quiz_page(request: Request):
     test = request.session.get("test")
     if not test:
         return RedirectResponse("/", status_code=303)
-    questions = [
-        public_question(QUESTIONS_BY_ID[qid])
-        for qid in test["question_ids"] if qid in QUESTIONS_BY_ID
-    ]
+    questions = [public_question(QUESTIONS_BY_ID[qid]) for qid in test["question_ids"] if qid in QUESTIONS_BY_ID]
     return templates.TemplateResponse("quiz.html", {
         "request": request, "user": user, "questions": questions,
         "mode": test["mode"], "time_limit": test.get("time_limit"),
@@ -555,7 +531,6 @@ async def submit_test(request: Request):
         test = request.session.get("test")
         if not test:
             return RedirectResponse("/", status_code=303)
-
         form = await request.form()
         if not check_csrf(request, form.get("csrf", "")):
             return HTMLResponse("Неверный CSRF-токен", status_code=400)
@@ -587,14 +562,10 @@ async def submit_test(request: Request):
             points = float(result.get("score", 0)) * q.get("points", 1)
             total_score += points
             details.append({
-                "id": qid,
-                "question": q.get("question", ""),
-                "type": q_type,
-                "user_answer": user_answers,
-                "correct": q.get("correct"),
+                "id": qid, "question": q.get("question", ""), "type": q_type,
+                "user_answer": user_answers, "correct": q.get("correct"),
                 "is_correct": bool(result.get("is_correct", False)),
-                "points": points,
-                "max_points": q.get("points", 1),
+                "points": points, "max_points": q.get("points", 1),
                 "explanation": q.get("explanation", ""),
             })
 

@@ -4,35 +4,50 @@
 <div class="card">
   <h1>Экзамен</h1>
   <p class="muted">25 вопросов · 20 минут</p>
+
   {% if user %}
-  <form action="/exam/start" method="post">
+  <form action="/exam/start" method="post" id="examForm">
     <input type="hidden" name="csrf" value="{{ csrf }}">
+
     <div class="form-group">
       <p class="muted" style="margin-bottom:8px">Тема:</p>
       <div class="topics">
         {% for t in exam_topics %}
         <label class="check">
-          <input type="radio" name="topic" value="{{ t }}" required>
+          <input type="radio" name="topic" value="{{ t }}"
+                 data-variants="{{ topic_variants[t] }}" required
+                 {% if loop.first %}checked{% endif %}>
           <span>{{ t }}</span>
         </label>
         {% endfor %}
       </div>
     </div>
+
     <div class="form-group">
       <p class="muted" style="margin-bottom:8px">Вариант:</p>
-      <div class="topics">
-        {% for v in variants %}
-        <label class="check">
-          <input type="radio" name="variant" value="{{ v }}" {% if v == 1 %}checked{% endif %} required>
-          <span>Вариант {{ v }}</span>
-        </label>
-        {% endfor %}
-      </div>
+      <div class="topics" id="variantBox"></div>
     </div>
+
     <button type="submit" class="btn">Начать экзамен</button>
   </form>
   {% else %}
   <p class="muted"><a href="/login">Войдите</a>.</p>
   {% endif %}
 </div>
+
+<script>
+const box = document.getElementById('variantBox');
+const radios = document.querySelectorAll('input[name="topic"]');
+function renderVariants() {
+  const selected = document.querySelector('input[name="topic"]:checked');
+  const n = selected ? parseInt(selected.dataset.variants || '10', 10) : 10;
+  let html = '';
+  for (let i = 1; i <= n; i++) {
+    html += `<label class="check"><input type="radio" name="variant" value="${i}" ${i===1?'checked':''} required><span>Вариант ${i}</span></label>`;
+  }
+  box.innerHTML = html;
+}
+radios.forEach(r => r.addEventListener('change', renderVariants));
+renderVariants();
+</script>
 {% endblock %}
