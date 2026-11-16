@@ -2,38 +2,121 @@
 {% block title %}Профиль{% endblock %}
 
 {% block content %}
-<div class="card">
-    <h1>Профиль: {{ user.username }}</h1>
-    <p class="muted">Дата регистрации: {{ user.created_at }}</p>
+<div class="card profile-head">
+  {% if user.avatar %}
+  <img class="avatar-lg" src="{{ user.avatar }}" alt="Аватар">
+  {% else %}
+  <div class="avatar-lg avatar-placeholder">{{ user.username[:1] | upper }}</div>
+  {% endif %}
+  <div>
+    <h1>{{ user.username }}</h1>
+    <p class="muted">Регистрация: {{ user.created_at }}</p>
+    <p>{{ user.bio or "Описание пока не заполнено." }}</p>
+  </div>
 </div>
 
 <div class="card">
-    <h2>История тестов</h2>
-    {% if results %}
-    <table class="results-table">
-        <thead>
-            <tr>
-                <th>Дата</th>
-                <th>Тема</th>
-                <th>Баллы</th>
-                <th>Режим</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in results %}
-            <tr>
-                <td>{{ r.created_at }}</td>
-                <td>{{ r.topic }}</td>
-                <td><b>{{ r.score }}</b> / {{ r.max_score }}</td>
-                <td>{{ "Экзамен" if r.is_exam else "Обычный" }}</td>
-                <td><a href="/result/{{ r.id }}">Разбор</a></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p class="muted">Вы ещё не проходили тесты.</p>
-    {% endif %}
+  <h2>Прогресс</h2>
+  {% if chart.labels %}
+  <canvas id="progressChart" height="120"></canvas>
+  <p class="muted" style="margin-top:8px">Синий — тренировка, красный — экзамен</p>
+  {% else %}
+  <p class="muted">Пока нет попыток — график появится после первого теста.</p>
+  {% endif %}
 </div>
+
+<div class="card">
+  <h2>Редактировать профиль</h2>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  {% if ok %}<p class="ok">{{ ok }}</p>{% endif %}
+  <form action="/profile" method="post" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>О себе
+        <textarea name="bio" rows="3" maxlength="500">{{ user.bio or "" }}</textarea>
+      </label>
+    </div>
+    <div class="form-group">
+      <label>Аватар (JPG / PNG / WEBP, до 2 МБ)
+        <input type="file" name="avatar" accept="image/jpeg,image/png,image/webp">
+      </label>
+    </div>
+    <button class="btn" type="submit">Сохранить</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>История</h2>
+  {% if results %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Тема</th>
+        <th>%</th>
+        <th>Режим</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td>{{ r.created_at }}</td>
+        <td>{{ r.topic }}</td>
+        <td>
+          {% if r.max_score %}
+            {{ ((r.score / r.max_score) * 100) | round(1) }}%
+          {% else %}
+            0%
+          {% endif %}
+        </td>
+        <td>{{ "Экзамен" if r.is_exam else "Тренировка" }}</td>
+        <td><a href="/result/{{ r.id }}">Разбор</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Вы ещё не проходили тесты.</p>
+  {% endif %}
+</div>
+
+{% if chart.labels %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const labels = {{ chart.labels | tojson }};
+const percents = {{ chart.percents | tojson }};
+const isExam = {{ chart.is_exam | tojson }};
+const colors = isExam.map(e => e ? 'rgba(192,53,58,0.9)' : 'rgba(47,111,191,0.9)');
+
+new Chart(document.getElementById('progressChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: '% результата',
+      data: percents,
+      borderColor: 'rgba(30,78,140,0.9)',
+      pointBackgroundColor: colors,
+      pointRadius: 5,
+      tension: 0.25,
+      fill: false
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => (isExam[ctx.dataIndex] ? 'Экзамен: ' : 'Тренировка: ') + ctx.parsed.y + '%'
+        }
+      }
+    },
+    scales: {
+      y: { min: 0, max: 100, title: { display: true, text: '%' } }
+    }
+  }
+});
+</script>
+{% endif %}
 {% endblock %}

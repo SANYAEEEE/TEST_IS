@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Рейтинг{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>Рейтинг (экзамены)</h1>
+  <p class="muted">Учитывается лучший результат экзамена каждого участника (% из 100).</p>
+
+  {% if board %}
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Участник</th>
+        <th>Лучший результат</th>
+        <th>Попыток экзамена</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in board %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          {% if row.avatar %}
+          <img class="avatar-sm" src="{{ row.avatar }}" alt="">
+          {% endif %}
+          {{ row.username }}
+        </td>
+        <td><b>{{ row.best_percent }}%</b></td>
+        <td>{{ row.exam_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Пока никто не сдавал экзамен.</p>
+  {% endif %}
+</div>
+{% endblock %}

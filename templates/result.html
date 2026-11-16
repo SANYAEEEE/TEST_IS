@@ -3,59 +3,66 @@
 
 {% block content %}
 <div class="card result-summary">
-    <h1>Результат</h1>
-    <div class="score-big">{{ result.score }} / {{ result.max_score }}</div>
-    <p class="muted">
-        {{ result.topic }} ·
-        {{ "Экзамен" if result.is_exam else "Обычный режим" }} ·
-        {{ result.created_at }}
-    </p>
+  <h1>Результат</h1>
+  <div class="score-big">{{ percent }}%</div>
+  <p class="muted">
+    {{ result.score }} из {{ result.max_score }} баллов
+    · {{ result.topic }}
+    · {{ "Экзамен" if result.is_exam else "Тренировка" }}
+    · {{ result.created_at }}
+  </p>
+  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
     <a href="/" class="btn">На главную</a>
+    <a href="/exam" class="btn btn-secondary">К экзамену</a>
     <a href="/profile" class="btn btn-secondary">В профиль</a>
+    <a href="/leaderboard" class="btn btn-secondary">Рейтинг</a>
+  </div>
 </div>
 
 {% for d in result.details %}
 <div class="card review-card {{ 'correct' if d.is_correct else 'wrong' }}">
-    <div class="q-header">
-        <span class="q-num">{{ loop.index }}</span>
-        <span class="badge {{ 'badge-ok' if d.is_correct else 'badge-fail' }}">
-            {{ "Верно" if d.is_correct else "Ошибка" }} · {{ d.points }}/{{ d.max_points }}
-        </span>
-    </div>
-    <p class="q-text">{{ d.question }}</p>
+  <div class="q-header">
+    <span class="q-num">{{ loop.index }}</span>
+    <span class="badge {{ 'badge-ok' if d.is_correct else 'badge-fail' }}">
+      {{ "Верно" if d.is_correct else "Ошибка" }}
+      · {{ d.points }}/{{ d.max_points }}
+    </span>
+  </div>
+  <p class="q-text">{{ d.question }}</p>
 
-    <div class="review-answers">
-        <p><b>Ваш ответ:</b>
-            {% if d.user_answer is string %}
-                {{ d.user_answer or "—" }}
-            {% elif d.user_answer is mapping %}
-                <ul>
-                {% for k, v in d.user_answer.items() %}
-                    <li>{{ k }} → {{ v or "—" }}</li>
-                {% endfor %}
-                </ul>
-            {% else %}
-                {{ d.user_answer | join(", ") if d.user_answer else "—" }}
-            {% endif %}
-        </p>
-        {% if not d.is_correct %}
-        <p><b>Правильный ответ:</b>
-            {% if d.correct is mapping %}
-                <ul>
-                {% for k, v in d.correct.items() %}
-                    <li>{{ k }} → {{ v }}</li>
-                {% endfor %}
-                </ul>
-            {% else %}
-                {{ d.correct | join(", ") }}
-            {% endif %}
-        </p>
-        {% endif %}
-    </div>
+  <div class="review-answers">
+    <p><b>Ваш ответ:</b>
+      {% if d.user_answer is string %}
+        {{ d.user_answer or "—" }}
+      {% elif d.user_answer is mapping %}
+        <ul>
+          {% for k, v in d.user_answer.items() %}
+          <li>{{ k }} → {{ v or "—" }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {{ d.user_answer | join(", ") if d.user_answer else "—" }}
+      {% endif %}
+    </p>
 
-    {% if d.explanation %}
-    <div class="explanation">{{ d.explanation }}</div>
+    {% if not d.is_correct %}
+    <p><b>Правильный ответ:</b>
+      {% if d.correct is mapping %}
+        <ul>
+          {% for k, v in d.correct.items() %}
+          <li>{{ k }} → {{ v }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        {{ d.correct | join(", ") if d.correct else "—" }}
+      {% endif %}
+    </p>
     {% endif %}
+  </div>
+
+  {% if d.explanation %}
+  <div class="explanation">{{ d.explanation }}</div>
+  {% endif %}
 </div>
 {% endfor %}
 {% endblock %}
